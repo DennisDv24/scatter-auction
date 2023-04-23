@@ -49,7 +49,7 @@ contract ScatterAuction is OwnableUpgradeable {
 		// The end time of the auction.
         uint40 endTime;
 		// ERC721 token ID. Starts from 0.
-        uint24 tokenId;
+        uint24 nftId;
 		// ERC721 max supply.
         uint24 maxSupply;
         // Whether or not the auction has been settled.
@@ -74,6 +74,8 @@ contract ScatterAuction is OwnableUpgradeable {
      * @dev The auction data.
      */
     AuctionData internal _auctionData;
+
+    // mapping(address => uint256) internal _rewardTokenShares; TODO
 
     /**
      * @dev The address that deployed the contract.
@@ -103,7 +105,7 @@ contract ScatterAuction is OwnableUpgradeable {
         require(_deployer == msg.sender, "Only the deployer can call.");
         require(nftContract != address(0), "The token address can't be 0");
         require(_auctionData.nftContract == address(0), "Already initialized.");
-		require(maxSupply > 0, "The token supply can't be 0")
+		require(maxSupply > 0, "The token supply can't be 0");
 
         __Ownable_init();
 
@@ -132,7 +134,7 @@ contract ScatterAuction is OwnableUpgradeable {
     function auctionData() external view returns (AuctionData memory data) {
         data = _auctionData;
         // Load some extra data regarding the Bonklers NFT contract.
-        data.nftContractBalance = balanceOf(data.nftContract);
+        data.nftContractBalance = address(_auctionData.nftContract).balance;
     }
 
     /**
@@ -163,16 +165,16 @@ contract ScatterAuction is OwnableUpgradeable {
         if (_auctionData.startTime == 0) {
             // If the first auction has not been created,
             // try to create a new auction.
-            creationFailed = !_createAuction(generationHash);
+            creationFailed = !_createAuction();
         } else if (hasEnded()) {
             if (_auctionData.settled) {
                 // If the auction has ended, and is settled, try to create a new auction.
-                creationFailed = !_createAuction(generationHash);
+                creationFailed = !_createAuction();
             } else {
                 // Otherwise, if the auction has ended, but is yet been settled, settle it.
                 _settleAuction();
                 // After settling the auction, try to create a new auction.
-                if (!_createAuction(generationHash)) {
+                if (!_createAuction()) {
                     // If the creation fails, it means that maxSupply was exceded
                     // In this case, refund all the ETH sent and early return.
                     SafeTransferLib.forceSafeTransferETH(msg.sender, msg.value);
@@ -189,7 +191,7 @@ contract ScatterAuction is OwnableUpgradeable {
         uint256 amount = _auctionData.amount; // `uint96`.
         uint256 endTime = _auctionData.endTime; // `uint40`.
 
-        // Ensures that the `tokenId` is equal to the auction's.
+        // Ensures that the `nftId` is equal to the auction's.
         // This prevents the following scenarios:
         // - A bidder bids a high price near closing time, the next auction starts,
         //   and the high bid gets accepted as the starting bid for the next auction.
@@ -222,6 +224,8 @@ contract ScatterAuction is OwnableUpgradeable {
                 emit AuctionExtended(nftId, extendedTime);
             }
         }
+
+		_updateShares(msg.value);
 
         if (amount != 0) {
             // Refund the last bidder.
@@ -286,8 +290,7 @@ contract ScatterAuction is OwnableUpgradeable {
      * @dev Withdraws all the ETH in the contract.
      */
     function withdrawETH() external onlyOwner {
-		// TODO TEST
-        SafeTransferLib.forceSafeTransferETH(msg.sender, balanceOf(nftContract));
+        SafeTransferLib.forceSafeTransferETH(msg.sender, address(this).balance);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -332,7 +335,7 @@ contract ScatterAuction is OwnableUpgradeable {
     function _createAuction() internal returns (bool) {
         uint256 nftId = uint256(_auctionData.nftId) + 1;
 	
-        if (nftId > maxSupply) return false;
+        if (nftId > _auctionData.maxSupply) return false;
 
         nftId = IAuctionedNFT(_auctionData.nftContract).mint();
 
@@ -359,14 +362,18 @@ contract ScatterAuction is OwnableUpgradeable {
         uint256 nftId = _auctionData.nftId;
         address nftContract = _auctionData.nftContract;
 
-        // Transfer the auctioned NFT to the winner.
-		// TODO integrate
-        IAuctionedNFT(nftContract).transferPurchasedBonkler{value: bonklerShares}(nftId, bidder);
+        // Transfer and pay the auctioned NFT to the winner.
+		payable(_auctionData.nftContract).transfer(msg.value);
+        IAuctionedNFT(nftContract).safeTransferFrom(address(this), bidder, nftId);
 
         _auctionData.settled = true;
 
         emit AuctionSettled(nftId, bidder, amount);
     }
+
+	function _updateShares(uint256 ethPaid) internal {
+		// TODO
+	}
 
     /**
      * @dev Checks whether `reservePrice` is greater than 0.
@@ -391,11 +398,8 @@ contract ScatterAuction is OwnableUpgradeable {
 }
 
 interface IAuctionedNFT {
-    /**
-     * @dev Allows the minter to transfer `tokenId` to address `to`,
-     * while accepting a ETH deposit to be stored inside the NFT contract.
-     */
-    function transferPurchasedBonkler(uint256 tokenId, address to) external payable;
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Allows the minter to mint a NFT to itself.
