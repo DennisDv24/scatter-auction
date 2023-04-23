@@ -3,18 +3,13 @@
 
 pragma solidity ^0.8.4;
 
-import "solady/src/utils/SafeTransferLib.sol";
-import "solady/src/utils/LibString.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract GeneralizedBonkler is ERC721, Ownable {
-    using LibString for string;
 
     address internal _minter;
     uint32 public nextTokenId;
-
-    mapping(uint256 => uint256) internal _tokenShares;
 
 	constructor(string memory name, string memory symbol) ERC721(name, symbol) {
         nextTokenId = 1;

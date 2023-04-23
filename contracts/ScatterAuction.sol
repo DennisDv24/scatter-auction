@@ -7,6 +7,7 @@ pragma solidity ^0.8.4;
 import "solady/src/utils/SafeTransferLib.sol";
 import "solady/src/utils/SafeCastLib.sol";
 import "@openzeppelinupgradeable/contracts/access/OwnableUpgradeable.sol";
+import "./IRewardToken.sol";
 
 contract ScatterAuction is OwnableUpgradeable {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -68,6 +69,8 @@ contract ScatterAuction is OwnableUpgradeable {
         // The amount of ETH in the NFT contract.
         // This can be considered as the treasury balance.
         uint256 nftContractBalance;
+		// ERC20 token that rewards bidding.
+		address rewardToken;
     }
 
     /**
@@ -75,7 +78,7 @@ contract ScatterAuction is OwnableUpgradeable {
      */
     AuctionData internal _auctionData;
 
-    // mapping(address => uint256) internal _rewardTokenShares; TODO
+    mapping(address => uint256) internal _rewardTokenShares;
 
     /**
      * @dev The address that deployed the contract.
@@ -100,10 +103,12 @@ contract ScatterAuction is OwnableUpgradeable {
         uint96 reservePrice,
         uint96 bidIncrement,
         uint32 duration,
-        uint32 timeBuffer
+        uint32 timeBuffer,
+		address rewardToken
     ) external payable initializer {
         require(_deployer == msg.sender, "Only the deployer can call.");
-        require(nftContract != address(0), "The token address can't be 0");
+        require(nftContract != address(0), "The nft token address can't be 0");
+        require(rewardToken != address(0), "The reward token address can't be 0");
         require(_auctionData.nftContract == address(0), "Already initialized.");
 		require(maxSupply > 0, "The token supply can't be 0");
 
@@ -225,7 +230,7 @@ contract ScatterAuction is OwnableUpgradeable {
             }
         }
 
-		_updateShares(msg.value);
+		_updateShares();
 
         if (amount != 0) {
             // Refund the last bidder.
@@ -246,6 +251,15 @@ contract ScatterAuction is OwnableUpgradeable {
         require(!_auctionData.settled, "Auction already settled.");
         _settleAuction();
     }
+
+	function claimRewardTokensBasedOnShares() public {
+		IRewardToken token = IRewardToken(_auctionData.rewardToken);
+		token.mint(
+			msg.sender,
+			_rewardTokenShares[msg.sender] * token.getRewardRatio()
+		);
+		_rewardTokenShares[msg.sender] = 0;
+	}
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                   ADMIN WRITE FUNCTIONS                    */
@@ -371,8 +385,8 @@ contract ScatterAuction is OwnableUpgradeable {
         emit AuctionSettled(nftId, bidder, amount);
     }
 
-	function _updateShares(uint256 ethPaid) internal {
-		// TODO
+	function _updateShares() internal {
+		_rewardTokenShares[msg.sender] += msg.value;
 	}
 
     /**
@@ -406,3 +420,4 @@ interface IAuctionedNFT {
      */
     function mint() external payable returns (uint256 tokenId);
 }
+
