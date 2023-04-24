@@ -4,84 +4,18 @@ from brownie import (
     ScatterAuction,
     AuctionRewardToken
 )
-from brownie import accounts
+from brownie import accounts, chain
 from web3 import Web3
 from itertools import starmap as nmap
 from time import sleep
 import pytest
 
-toWei = lambda x: Web3.toWei(x, 'ether')
-
-def reverts(f):
-    try:
-        with brownie.reverts():
-            f()
-    except:
-        return False
-    return True
-
-def deploy_system(
-    max_supply = 10000,
-    reserve_price = 0.1,
-    bid_increment = 0.05,
-    auction_duration = 60 * 60 * 3,
-    extra_bid_time = 60 * 5
-):
-    acc = accounts[0]
-    nft = MinimalAuctionableToken.deploy(
-        "DeploymentTest",
-        "DT",
-        {'from': acc}
-    )
-    reward = AuctionRewardToken.deploy(
-        "RewardToken",
-        "RT",
-        {'from': acc}
-    )
-
-    auction_house = ScatterAuction.deploy({'from': acc})
-    auction_house.initialize(
-        nft.address,
-        max_supply,
-        toWei(reserve_price),
-        toWei(bid_increment),
-        auction_duration,
-        extra_bid_time,
-        reward.address,
-        {'from': acc}
-    )
-
-    nft.setMinter(auction_house.address, {'from': acc})
-    reward.setMinter(auction_house.address, {'from': acc})
-    
-    return nft, reward, auction_house
-
-def test_trivial():
-    nft, reward, auction_house = deploy_system()
-    assert 1 == 1
-
-from_param_to_auction_house_index = {
-    "bidder": 0,
-    "amount": 1,
-    "startTime": 2,
-    "endTime": 3,
-    "nftId": 4,
-    "maxSupply": 5,
-    "settled": 6,
-    "nftContract": 7,
-    "reservePrice": 8,
-    "bidIncrement": 9,
-    "duration": 10,
-    "timeBuffer": 11,
-    "nftContractBalance": 12,
-    "rewardToken": 13
-}
-
-def getparam(param, auction_house):
-    return auction_house.auctionData()[
-        from_param_to_auction_house_index[param]
-    ]
-
+from scripts.playground import (
+    reverts,
+    toWei,
+    deploy_system,
+    getparam
+)
 
 def test_right_parameters():
     expected_max_supply = 312
@@ -148,24 +82,129 @@ def test_bid_parameters():
 def test_auction_ending():
     bidder = accounts[1]
     nft, reward, auction = deploy_system(
-        reserve_price=0.01, auction_duration=5, extra_bid_time=3
+        reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
-    sleep(15)
+    sleep(5)
+    chain.mine(1)
 
     assert auction.hasEnded()
 
-@pytest.mark.skip
 def test_auction_settling():
     bidder = accounts[1]
     nft, reward, auction = deploy_system(
-        reserve_price=0.01, auction_duration=5, extra_bid_time=3
+        reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
-    sleep(15)
 
+    assert nft.balanceOf(bidder) == 0
+    assert nft.balanceOf(auction.address) == 1
+
+    sleep(5)
+    chain.mine(1)
+    
+    auction.settleAuction({'from': bidder})
+    assert nft.balanceOf(bidder) == 1
+    assert nft.balanceOf(auction.address) == 0
+
+def test_auction_new_bid_initialization():
+    bidder = accounts[1]
+    nft, reward, auction = deploy_system(
+        reserve_price=0.01, auction_duration=3, extra_bid_time=2
+    )
+    auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
+
+    sleep(5)
+    chain.mine(1)
+   
     new_bidder = accounts[2]
     auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
+
+    assert nft.balanceOf(bidder) == 1
+    assert nft.balanceOf(auction) == 1
+    assert nft.balanceOf(new_bidder) == 0
+    assert auction.balance() == toWei(0.01)*2
+
+def test_withdraw_eth():
+    bidder = accounts[1]
+    nft, reward, auction = deploy_system(
+        reserve_price=0.01, auction_duration=3, extra_bid_time=2
+    )
+    auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
+
+    sleep(5)
+    chain.mine(1)
+
+    initial_bal = accounts[0].balance()
+    
+    new_bidder = accounts[2]
+    auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
+    auction.withdrawETH({'from': accounts[0]})
+    
+    assert auction.balance() == toWei(0.01)
+    assert accounts[0].balance() > initial_bal + toWei(0.009)
+
+def test_total_withdraw_after_total_supply():
+    bidder = accounts[1]
+    nft, reward, auction = deploy_system(
+        max_supply=1, 
+        reserve_price=0.01,
+        auction_duration=3,
+        extra_bid_time=2
+    )
+    auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
+
+    sleep(5)
+    chain.mine(1)
+    
+    initial_bal = accounts[0].balance()
+    assert auction.balance() == toWei(0.01)
+
+    auction.withdrawETH({'from': accounts[0]})
+    
+    assert auction.balance() == 0
+    assert accounts[0].balance() > initial_bal
+
+def test_cant_bid_after_total_supply():
+    bidder = accounts[1]
+    nft, reward, auction = deploy_system(
+        max_supply=1, 
+        reserve_price=0.01,
+        auction_duration=3,
+        extra_bid_time=2
+    )
+    auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
+
+    sleep(5)
+    chain.mine(1)
+
+    new_bidder = accounts[2]
+    assert not reverts(
+        lambda: auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
+    )
+    assert new_bidder.balance() > new_bidder.balance() - toWei(0.01)
+    assert auction.balance() == toWei(0.01)
+
+    chain.mine(1)
+
+    assert nft.balanceOf(auction) == 0
+    assert nft.balanceOf(new_bidder) == 0
     assert nft.balanceOf(bidder) == 1
 
+    assert reverts(
+        lambda: auction.settleAuction({'from': new_bidder})
+    )
+
+    assert nft.balanceOf(auction) == 0
+    assert nft.balanceOf(new_bidder) == 0
+    assert nft.balanceOf(bidder) == 1
+
+def test_multiple_biddings_and_mintings():
+    assert False
+
+def test_bid_reward_shares():
+    assert False
+
+def test_bid_reward_claims():
+    assert False
 
