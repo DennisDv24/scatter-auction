@@ -126,6 +126,8 @@ contract ScatterAuction is OwnableUpgradeable {
 
         _auctionData.duration = duration;
         _auctionData.timeBuffer = timeBuffer;
+
+		_auctionData.rewardToken = rewardToken;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
