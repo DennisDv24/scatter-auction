@@ -8,7 +8,7 @@ import "./IRewardToken.sol";
 contract AuctionRewardToken is ERC20, Ownable, IRewardToken {
 
     address internal _minter;
-	uint256 private _rewardRatio;
+	uint256 private _rewardRatio = 1;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -32,7 +32,7 @@ contract AuctionRewardToken is ERC20, Ownable, IRewardToken {
         _;
     }
 
-	function getRewardRatio() external returns (uint256) {
+	function getRewardRatio() external view returns (uint256) {
 		return _rewardRatio;
 	}
 }

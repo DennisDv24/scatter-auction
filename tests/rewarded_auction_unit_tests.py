@@ -1,9 +1,4 @@
 import brownie
-from brownie import (
-    MinimalAuctionableToken,
-    ScatterAuction,
-    AuctionRewardToken
-)
 from brownie import accounts, chain
 from web3 import Web3
 from itertools import starmap as nmap
@@ -13,20 +8,21 @@ import pytest
 from scripts.playground import (
     reverts,
     toWei,
-    deploy_system,
     getparam
 )
 
+from scripts.deploy_helpers import deploy_rewarded_auction
+
 def test_right_parameters():
     expected_max_supply = 312
-    nft, reward, auction = deploy_system(max_supply = expected_max_supply)
+    nft, reward, auction = deploy_rewarded_auction(max_supply = expected_max_supply)
     assert getparam("maxSupply", auction) == expected_max_supply
     assert getparam("nftContract", auction) == nft.address
-    assert getparam("rewardToken", auction) == reward.address
+    assert auction.rewardToken() == reward.address
  
 def test_bid_ids():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(reserve_price=0.01, bid_increment=0.01)
+    nft, reward, auction = deploy_rewarded_auction(reserve_price=0.01, bid_increment=0.01)
 
     ids = [0, 1, 2, getparam('maxSupply', auction)+1, 12312312312, 1]
     prices = list(map(toWei, [0.1]*2 + [0.2]*4))
@@ -43,7 +39,7 @@ def test_bid_ids():
     
 def test_bid_increment():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(reserve_price=0.01, bid_increment=0.01)
+    nft, reward, auction = deploy_rewarded_auction(reserve_price=0.01, bid_increment=0.01)
     prices = map(toWei, [0.01*i for i in range(1, 10)])
     prices2 = map(lambda x: x-1, prices)
     
@@ -58,7 +54,7 @@ def test_bid_increment():
 def test_balances_for_one_bidder():
     bidder = accounts[1]
     initial_bal = bidder.balance()
-    nft, reward, auction = deploy_system(reserve_price=0.01, bid_increment=0.01)
+    nft, reward, auction = deploy_rewarded_auction(reserve_price=0.01, bid_increment=0.01)
 
     prices = list(map(toWei, [0.01*i for i in range(1, 10)]))
     list(map(lambda x: auction.createBid(1, {'value': x, 'from': bidder}), prices))
@@ -67,7 +63,7 @@ def test_balances_for_one_bidder():
 
 def test_bid_parameters():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         reserve_price=0.01, auction_duration=5, extra_bid_time=3
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
@@ -81,7 +77,7 @@ def test_bid_parameters():
 
 def test_auction_ending():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
@@ -92,7 +88,7 @@ def test_auction_ending():
 
 def test_auction_settling():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
@@ -109,7 +105,7 @@ def test_auction_settling():
 
 def test_auction_new_bid_initialization():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
@@ -127,7 +123,7 @@ def test_auction_new_bid_initialization():
 
 def test_withdraw_eth():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
@@ -146,7 +142,7 @@ def test_withdraw_eth():
 
 def test_total_withdraw_after_total_supply():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         max_supply=1, 
         reserve_price=0.01,
         auction_duration=3,
@@ -167,7 +163,7 @@ def test_total_withdraw_after_total_supply():
 
 def test_cant_bid_after_total_supply():
     bidder = accounts[1]
-    nft, reward, auction = deploy_system(
+    nft, reward, auction = deploy_rewarded_auction(
         max_supply=1, 
         reserve_price=0.01,
         auction_duration=3,
@@ -203,16 +199,54 @@ def test_multiple_biddings_and_mintings():
     assert False
 
 def test_bid_reward_shares():
-    assert False
+    bidder = accounts[1]
+    nft, reward, auction = deploy_rewarded_auction(
+        reserve_price=0.01, bid_increment = 0.005
+    )
+
+    auction.createBid(1, {'from': bidder, 'value': toWei(0.01)})
+    assert auction.rewardTokenShares(bidder) == toWei(0.01)
+
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert auction.rewardTokenShares(bidder) == 0
+
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert auction.rewardTokenShares(bidder) == 0
+
+    auction.createBid(1, {'from': bidder, 'value': toWei(0.025)})
+    assert auction.rewardTokenShares(bidder) == toWei(0.025)
+
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert auction.rewardTokenShares(bidder) == 0
+
 
 def test_bid_reward_claims():
-    assert False
+    bidder = accounts[1]
+    nft, reward, auction = deploy_rewarded_auction(
+        reserve_price=0.01, bid_increment = 0.005
+    )
 
-def test_merkle_root_proof():
-    assert False
+    ratio = reward.getRewardRatio()
 
-def test_merkle_root_invalid_proof():
-    assert False
+    auction.createBid(1, {'from': bidder, 'value': toWei(0.01)})
+    assert reward.balanceOf(bidder) == 0
 
-def test_merkle_root_invalid_leaf():
-    assert False
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert reward.balanceOf(bidder) == toWei(0.01) * ratio
+
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert reward.balanceOf(bidder) == toWei(0.01) * ratio
+
+    auction.createBid(1, {'from': bidder, 'value': toWei(0.025)})
+    assert reward.balanceOf(bidder) == toWei(0.01) * ratio
+
+    auction.claimRewardTokensBasedOnShares({'from': bidder})
+    assert reward.balanceOf(bidder) == toWei(0.035) * ratio
+
+def test_inherited_onlyowner():
+    nft, reward, auction = deploy_rewarded_auction()
+    assert reverts(lambda:
+        auction.setRewardTokenAddress(accounts[1], {'from': accounts[1]})
+    )
+
+
