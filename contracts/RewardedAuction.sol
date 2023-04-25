@@ -7,6 +7,9 @@ import "./IRewardToken.sol";
 
 contract RewardedAuction is ScatterAuction {
 
+	/**
+     * @dev Amount of eth bidded by an address.
+     */
     mapping(address => uint256) public rewardTokenShares;
 
 	address public rewardToken;
