@@ -9,7 +9,7 @@ import "solady/src/utils/SafeCastLib.sol";
 import "@openzeppelinupgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./IRewardToken.sol";
 
-contract ScatterAuction is OwnableUpgradeable {
+contract ScatterAuctionWithRewardToken is OwnableUpgradeable {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
