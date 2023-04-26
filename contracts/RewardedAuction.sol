@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "./ScatterAuction.sol";
-import "./IRewardToken.sol";
+import "./tokens/IRewardToken.sol";
 
 contract RewardedAuction is ScatterAuction {
 

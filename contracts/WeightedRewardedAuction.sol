@@ -39,14 +39,14 @@ contract WeightedRewardedAuction is ScatterAuction {
      * @dev Ratio of reward tokens to give a bidder for every eth
 	 * bidded. 
      */
-	Ratio internal _rewardRatio;
+	Ratio internal _rewardRatio = Ratio(1, 1);
 	
 	/**
 	 * @dev Decimal weight for extra rewards based on rewardable
 	 * tokens held. See `rewardsBoosterStorage`. Set to (0,0)
 	 * if you want to disable extra rewards.
 	 */
-	Ratio internal _extraRewardWeighing;
+	Ratio internal _extraRewardWeighing = Ratio(0, 0);
 	
 	/**
 	 * @dev Merkle root that holds (address, rewardableTokensHeld) pairs.
@@ -64,7 +64,7 @@ contract WeightedRewardedAuction is ScatterAuction {
 	 * that `bidder` actually holds `uniqueDeriv`. See 
 	 * `claimRewardTokensBasedOnShares`.
 	 */
-	function getRewardsFor(address bidder, uint16 uniqueDerivsHeld) 
+	function getRewardsFor(address bidder, uint96 uniqueDerivsHeld) 
 		public 
 		view 
 		returns (uint256) 
@@ -80,14 +80,16 @@ contract WeightedRewardedAuction is ScatterAuction {
 	}
 
 	function claimRewardTokensBasedOnShares(
-		bytes32[] memory proof, uint16 uniqueDerivsHeld
+		bytes32[] memory proof, uint96 uniqueDerivsHeld
 	) public {
 		require(_rewardToken != address(0), "No reward token for this auction.");
+		require(_rewardTokenShares[msg.sender] > 0, "No reward tokens to claim.");
 
-		if (extraRewardsSupported()) require(
-			checkBidderRewardableTokens(proof, msg.sender, uniqueDerivsHeld),
-			"`msg.sender` didn't held `uniqueDerivsHeld` at snapshot time."
-		);
+		if (
+			extraRewardsSupported() &&
+			!checkBidderRewardableTokens(proof, msg.sender, uniqueDerivsHeld)
+		)
+			uniqueDerivsHeld = 0;
 		
 		IERC20 token = IERC20(_rewardToken);
 		token.transfer(msg.sender, getRewardsFor(msg.sender, uniqueDerivsHeld));
@@ -97,10 +99,10 @@ contract WeightedRewardedAuction is ScatterAuction {
 	function extraRewardsSupported() public view returns (bool) {
 		return _extraRewardWeighing.x != 0 && _extraRewardWeighing.y != 0;
 	}
-
+	
 	function checkBidderRewardableTokens(
-		bytes32[] memory proof, address bidder, uint16 rewardableTokensHeld
-	) public returns (bool) {
+		bytes32[] memory proof, address bidder, uint96 rewardableTokensHeld
+	) public view returns (bool) {
 		require(rewardableTokensHeldPerWalletRoot > 0, "Merkle root not initialized.");
 		return MerkleProofLib.verify(
 			proof,
