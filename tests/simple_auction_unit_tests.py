@@ -200,3 +200,6 @@ def test_multiple_biddings_and_mintings():
 
 def test_multiple_biddings_and_mintings_until_sold_out():
     assert False
+
+def test_bid_before_initialization():
+    assert False

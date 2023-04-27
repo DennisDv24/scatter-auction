@@ -15,13 +15,11 @@ contract MinimalAuctionableNFT is ERC721, Ownable {
     }
 
     function mint() external payable onlyMinter returns (uint256 tokenId) {
-        // require(!mintLocked, "Locked."); TODO handled by Archetype contract
         tokenId = nextTokenId++;
-        _mint(msg.sender, tokenId); // Mint the sender 1 token.
+        _mint(msg.sender, tokenId);
     }
 
     function setMinter(address minter) external onlyOwner {
-        // require(!minterLocked, "Locked."); TODO handled by Archetype contract
         _minter = minter;
     }
 

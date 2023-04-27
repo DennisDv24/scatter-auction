@@ -1,12 +1,18 @@
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.8.3
   - OpenZeppelin/openzeppelin-contracts-upgradeable@4.8.3
+  - chiru-labs/ERC721A-Upgradeable@4.2.3
 compiler:
   solc:
     remappings:
       - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.8.3'
-      - 'solady=./lib/solady'
       - '@openzeppelinupgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.8.3'
+      - 'erc721a-upgradeable=chiru-labs/ERC721A-Upgradeable@4.2.3'
+      - 'solady=./lib/solady'
+      - 'scatter=./lib/scatter-contracts'
+      - 'closedsea=./lib/closedsea'
+      - '@openzeppelin/contracts-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.8.3/contracts'
+      - './ERC721A__OwnableUpgradeable.sol=./lib/scatter-contracts/contracts/ERC721A__OwnableUpgradeable.sol'
 
 dotenv: .env
 wallets:

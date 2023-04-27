@@ -150,8 +150,7 @@ contract ScatterAuction is OwnableUpgradeable {
      * @dev Create a bid for a Bonkler, with a given amount.
      * This contract only accepts payment in ETH.
      *
-     * The frontend should pass in the next `nftId` and the next `generationHash`
-     * when the auction has ended.
+     * The frontend should pass in the next `nftId` when the auction has ended.
      */
     function createBid(uint256 nftId) public payable virtual {
         // To prevent gas under-estimation.
@@ -282,17 +281,6 @@ contract ScatterAuction is OwnableUpgradeable {
         emit AuctionTimeBufferUpdated(timeBuffer);
     }
 
-    /**
-     * @dev Withdraws all the ETH in the contract.
-     */
-    function withdrawETH() external onlyOwner {
-		if (_auctionData.nftId >= _auctionData.maxSupply && hasEnded()) 
-			_auctionData.amount = 0;
-        SafeTransferLib.forceSafeTransferETH(
-			msg.sender, address(this).balance - _auctionData.amount
-		);
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                 EVENT EMITTERS FOR TESTING                 */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -361,9 +349,11 @@ contract ScatterAuction is OwnableUpgradeable {
         uint256 amount = _auctionData.amount;
         uint256 nftId = _auctionData.nftId;
         address nftContract = _auctionData.nftContract;
-		
-		// payable(_auctionData.nftContract).transfer(msg.value);
-        IAuctionedNFT(nftContract).safeTransferFrom(address(this), bidder, nftId);
+
+		payable(nftContract).transfer(amount);
+        IAuctionedNFT(nftContract).safeTransferFrom(
+			address(this), bidder, nftId
+		);
 
         _auctionData.settled = true;
 
@@ -394,7 +384,7 @@ contract ScatterAuction is OwnableUpgradeable {
 
 interface IAuctionedNFT {
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external; 
 
     /**
      * @dev Allows the minter to mint a NFT to itself.
