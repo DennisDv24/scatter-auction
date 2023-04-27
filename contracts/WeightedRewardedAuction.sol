@@ -59,12 +59,16 @@ contract WeightedRewardedAuction is ScatterAuction {
 		_rewardTokenShares[msg.sender] += msg.value;
 	}
 
+	function getSharesFor(address bidder) public view returns (uint256) {
+		return _rewardTokenShares[bidder];
+	}
+
 	/**
 	 * @dev Note that to implement claiming logic you need to verify
 	 * that `bidder` actually holds `uniqueDeriv`. See 
 	 * `claimRewardTokensBasedOnShares`.
 	 */
-	function getRewardsFor(address bidder, uint96 uniqueDerivsHeld) 
+	function getRewardsFor(address bidder, uint256 uniqueDerivsHeld) 
 		public 
 		view 
 		returns (uint256) 
@@ -110,7 +114,12 @@ contract WeightedRewardedAuction is ScatterAuction {
 			keccak256(abi.encodePacked(bidder, rewardableTokensHeld))
 		);
 	}
-
+	
+	/**
+	 * @dev Rewards configuration. Set `rewardToken` to `address(0)`
+	 * to disable all rewards. Set `extraRatio` to `(0,0)` to disable
+	 * all extra rewards based on the `rewardableTokensHeldRoot`.
+	 */
 	function configureRewards(
 		address rewardToken,
 		Ratio memory rewardRatio,
