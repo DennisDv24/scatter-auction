@@ -93,15 +93,19 @@ def test_auction_settling():
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
 
+    assert auction.balance() == toWei(0.01)
+
     assert nft.balanceOf(bidder) == 0
     assert nft.balanceOf(auction.address) == 1
 
     sleep(5)
     chain.mine(1)
-    
+
     auction.settleAuction({'from': bidder})
     assert nft.balanceOf(bidder) == 1
     assert nft.balanceOf(auction.address) == 0
+    assert auction.balance() == 0
+    assert nft.balance() == toWei(0.01)
 
 def test_auction_new_bid_initialization():
     bidder = accounts[1]
@@ -109,17 +113,31 @@ def test_auction_new_bid_initialization():
         reserve_price=0.01, auction_duration=3, extra_bid_time=2
     )
     auction.createBid(1, {'value': toWei(0.01), 'from': bidder})
+    assert auction.balance() == toWei(0.01)
 
     sleep(5)
     chain.mine(1)
+
+    assert nft.balance() == 0 # It has to be settled
    
     new_bidder = accounts[2]
     auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
-
+    
+    assert nft.balance() == toWei(0.01)
     assert nft.balanceOf(bidder) == 1
     assert nft.balanceOf(auction) == 1
     assert nft.balanceOf(new_bidder) == 0
-    assert auction.balance() == toWei(0.01)*2
+    assert auction.balance() == toWei(0.01)
+
+    sleep(5)
+    chain.mine(1)
+
+    assert auction.balance() == toWei(0.01)
+    assert nft.balance() == toWei(0.01)
+
+    auction.settleAuction({'from': new_bidder})
+    assert auction.balance() == 0
+    assert nft.balance() == toWei(0.01) * 2
 
 def test_withdraw_eth():
     bidder = accounts[1]
@@ -135,9 +153,11 @@ def test_withdraw_eth():
     
     new_bidder = accounts[2]
     auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
-    auction.withdrawETH({'from': accounts[0]})
-    
-    assert auction.balance() == toWei(0.01)
+
+    assert nft.balance() == toWei(0.01)
+    nft.withdraw({'from': accounts[0]})
+
+    assert nft.balance() == 0
     assert accounts[0].balance() > initial_bal + toWei(0.009)
 
 def test_total_withdraw_after_total_supply():
@@ -155,10 +175,11 @@ def test_total_withdraw_after_total_supply():
     
     initial_bal = accounts[0].balance()
     assert auction.balance() == toWei(0.01)
-
-    auction.withdrawETH({'from': accounts[0]})
     
-    assert auction.balance() == 0
+    auction.settleAuction({'from': accounts[0]})
+    nft.withdraw({'from': accounts[0]})
+    
+    assert nft.balance() == 0
     assert accounts[0].balance() > initial_bal
 
 def test_cant_bid_after_total_supply():
@@ -179,7 +200,8 @@ def test_cant_bid_after_total_supply():
         lambda: auction.createBid(2, {'value': toWei(0.01), 'from': new_bidder})
     )
     assert new_bidder.balance() > new_bidder.balance() - toWei(0.01)
-    assert auction.balance() == toWei(0.01)
+    assert nft.balance() == toWei(0.01)
+    assert auction.balance() == 0
 
     chain.mine(1)
 
@@ -195,11 +217,14 @@ def test_cant_bid_after_total_supply():
     assert nft.balanceOf(new_bidder) == 0
     assert nft.balanceOf(bidder) == 1
 
+@pytest.mark.skip
 def test_multiple_biddings_and_mintings():
     assert False
 
+@pytest.mark.skip
 def test_multiple_biddings_and_mintings_until_sold_out():
     assert False
 
+@pytest.mark.skip
 def test_bid_before_initialization():
     assert False

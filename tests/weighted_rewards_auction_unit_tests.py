@@ -99,7 +99,7 @@ def test_reward_claim_without_tokens_in_contract():
     rewarded_bidder_holds = addr_to_helds[1][1]
 
     bidder = accounts[1]
-
+    
     auction.createBid(1, {'from': bidder, 'value': toWei(0.1)})
     auction.createBid(1, {'from': rewarded_bidder, 'value': toWei(0.25)})
     auction.createBid(1, {'from': bidder, 'value': toWei(0.3)})
@@ -204,7 +204,6 @@ def test_access():
         lambda: auction.configureRewards(ZERO, (0,0), (0,0), 0, {'from': hacker}),
         lambda: auction.createBid(1, {'from': hacker, 'value': toWei(0.1499)}),
         lambda: auction.withdrawRewardToken({'from': hacker}),
-        lambda: auction.withdrawETH({'from': hacker}),
         lambda: auction.setTimeBuffer(1, {'from': hacker}),
         lambda: auction.setDuration(1, {'from': hacker}),
         lambda: auction.settleAuction({'from': hacker})
@@ -215,7 +214,6 @@ def test_access():
     admin_manipulations = [
         lambda: auction.withdrawRewardToken({'from': admin}),
         lambda: auction.configureRewards(ZERO, (0,0), (0,0), 0, {'from': admin}),
-        lambda: auction.withdrawETH({'from': admin}),
         lambda: auction.setTimeBuffer(100, {'from': admin}),
         lambda: auction.setDuration(100, {'from': admin})
     ]

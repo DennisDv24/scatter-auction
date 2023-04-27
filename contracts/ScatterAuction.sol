@@ -127,11 +127,11 @@ contract ScatterAuction is OwnableUpgradeable {
 
     /**
      * @dev Returns all the public data on the auction,
-     * with some useful extra information on the Bonklers NFT.
+     * with some useful extra information on the NFT.
      */
     function auctionData() external view returns (AuctionData memory data) {
         data = _auctionData;
-        // Load some extra data regarding the Bonklers NFT contract.
+        // Load some extra data regarding the NFT contract.
         data.nftContractBalance = address(_auctionData.nftContract).balance;
     }
 
@@ -147,7 +147,7 @@ contract ScatterAuction is OwnableUpgradeable {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /**
-     * @dev Create a bid for a Bonkler, with a given amount.
+     * @dev Create a bid for a NFT, with a given amount.
      * This contract only accepts payment in ETH.
      *
      * The frontend should pass in the next `nftId` when the auction has ended.
@@ -195,7 +195,7 @@ contract ScatterAuction is OwnableUpgradeable {
         // - A bidder bids for the next auction due to frontend being ahead of time,
         //   but the current auction gets extended,
         //   and the bid gets accepted for the current auction.
-        require(nftId == _auctionData.nftId, "Bid for wrong Bonkler.");
+        require(nftId == _auctionData.nftId, "Bid for wrong NFT ID.");
 
         if (amount == 0) {
             require(msg.value >= _auctionData.reservePrice, "Bid below reserve price.");
@@ -326,9 +326,9 @@ contract ScatterAuction is OwnableUpgradeable {
         if (nftId > _auctionData.maxSupply) return false;
 
         nftId = IAuctionedNFT(_auctionData.nftContract).mint();
-
+	
         uint256 endTime = block.timestamp + _auctionData.duration;
-
+		
         _auctionData.bidder = address(1);
         _auctionData.amount = 0;
         _auctionData.startTime = SafeCastLib.toUint40(block.timestamp);
@@ -389,6 +389,6 @@ interface IAuctionedNFT {
     /**
      * @dev Allows the minter to mint a NFT to itself.
      */
-    function mint() external payable returns (uint256 tokenId);
+    function mint() external returns (uint256 tokenId);
 }
 

@@ -30,4 +30,10 @@ contract MinimalAuctionableNFT is ERC721, Ownable {
         require(msg.sender == _minter, "Unauthorized minter.");
         _;
     }
+
+	receive() external payable {}
+
+	function withdraw() external onlyOwner {
+		payable(msg.sender).transfer(address(this).balance);
+	}
 }

@@ -15,7 +15,7 @@
 
 pragma solidity ^0.8.4;
 
-import "./AuctionableArchetypeLogic.sol";
+import "./AuctionableArchetypeState.sol";
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 import "erc721a-upgradeable/contracts/ERC721A__Initializable.sol";
 import "scatter/contracts/ERC721A__OwnableUpgradeable.sol";
@@ -23,7 +23,7 @@ import "solady/src/utils/LibString.sol";
 import "closedsea/src/OperatorFilterer.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 
-contract Archetype is
+contract AuctionableArchetype is
   ERC721A__Initializable,
   ERC721AUpgradeable,
   OperatorFilterer,
@@ -68,10 +68,10 @@ contract Archetype is
   //
   // PUBLIC
   //
-	function mint() external onlyAuctionHouse returns (uint256 tokenId) {
+	function mint() external payable onlyAuctionHouse returns (uint256) {
 		if (options.mintLocked) revert MintEnded();
-		tokenId = nextTokenId++;
-		_mint(msg.sender, tokenId);
+		_mint(msg.sender, 1);
+		return _totalMinted();
 	}
 
   function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
@@ -317,4 +317,6 @@ contract Archetype is
     config.defaultRoyalty = feeNumerator;
     _setDefaultRoyalty(receiver, feeNumerator);
   }
+
+	receive() external payable {}
 }
