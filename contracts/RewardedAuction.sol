@@ -23,7 +23,7 @@ contract RewardedAuction is ScatterAuction {
 		require(rewardToken != address(0), "No reward token for this auction.");
 		
 		IRewardToken token = IRewardToken(rewardToken);
-		token.mint(
+		token.mintFromAuctionHouse(
 			msg.sender,
 			rewardTokenShares[msg.sender] * token.getRewardRatio()
 		);

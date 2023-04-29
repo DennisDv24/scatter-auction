@@ -12,7 +12,7 @@ contract AuctionRewardToken is ERC20, Ownable, IRewardToken {
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    function mint(address to, uint256 amount) public onlyMinter {
+    function mintFromAuctionHouse(address to, uint256 amount) public onlyMinter {
         _mint(to, amount);
     }
 
