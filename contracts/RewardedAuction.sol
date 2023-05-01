@@ -3,34 +3,39 @@
 pragma solidity ^0.8.4;
 
 import "./ScatterAuction.sol";
+import "./IHoldsShares.sol";
 
-contract RewardedAuction is ScatterAuction {
+contract RewardedAuction is ScatterAuction, IHoldsShares {
 
 	/**
      * @dev Amount of eth bidded by an address.
      */
-    mapping(address => uint256) public rewardTokenShares;
-	mapping(address => bool) public allowSharesUpdate;
+    mapping(address => uint256) private _rewardTokenShares;
+	mapping(address => bool) private _allowSharesUpdate;
 
-	address public rewardToken;
 
     function createBid(uint256 nftId) override public payable {
 		super.createBid(nftId);
-		rewardTokenShares[msg.sender] += msg.value;
+		_rewardTokenShares[msg.sender] += msg.value;
 	}
 	
-	/**
-	 * @param user Should be an IRewardToken.
-	 */
 	// TODO test msg.sender
-	function getAndClearSharesFor(address user) public returns (uint256 shares) {
-		require(msg.sender == owner() || allowSharesUpdate[msg.sender]);
-		shares = rewardTokenShares[user];
-		delete rewardTokenShares[user];
+	function getAndClearSharesFor(address user) external returns (uint256 shares) {
+		require(msg.sender == owner() || _allowSharesUpdate[msg.sender]);
+		shares = _rewardTokenShares[user];
+		delete _rewardTokenShares[user];
 	}
 
-	function addSharesUpdated(address updater) public onlyOwner {
-		allowSharesUpdate[updater] = true;
+	function addSharesUpdater(address updater) external onlyOwner {
+		_allowSharesUpdate[updater] = true;
+	}
+
+	function getIsSharesUpdater(address updater) external view returns (bool) {
+		return _allowSharesUpdate[updater];
+	}
+
+	function getTokenShares(address user) external view returns (uint256) {
+		return _rewardTokenShares[user];
 	}
 
 }
