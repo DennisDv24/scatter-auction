@@ -3,7 +3,6 @@
 pragma solidity ^0.8.4;
 
 import "./ScatterAuction.sol";
-import "./tokens/IRewardToken.sol";
 
 contract RewardedAuction is ScatterAuction {
 
@@ -11,6 +10,7 @@ contract RewardedAuction is ScatterAuction {
      * @dev Amount of eth bidded by an address.
      */
     mapping(address => uint256) public rewardTokenShares;
+	mapping(address => bool) public allowSharesUpdate;
 
 	address public rewardToken;
 
@@ -19,18 +19,18 @@ contract RewardedAuction is ScatterAuction {
 		rewardTokenShares[msg.sender] += msg.value;
 	}
 	
-	function claimRewardTokensBasedOnShares() public {
-		require(rewardToken != address(0), "No reward token for this auction.");
-		
-		IRewardToken token = IRewardToken(rewardToken);
-		token.mintFromAuctionHouse(
-			msg.sender,
-			rewardTokenShares[msg.sender] * token.getRewardRatio()
-		);
-		rewardTokenShares[msg.sender] = 0;
+	/**
+	 * @param user Should be an IRewardToken.
+	 */
+	// TODO test msg.sender
+	function getAndClearSharesFor(address user) public returns (uint256 shares) {
+		require(msg.sender == owner() || allowSharesUpdate[msg.sender]);
+		shares = rewardTokenShares[user];
+		delete rewardTokenShares[user];
 	}
 
-	function setRewardTokenAddress(address _rewardToken) public onlyOwner {
-		rewardToken = _rewardToken;
+	function addSharesUpdated(address updater) public onlyOwner {
+		allowSharesUpdate[updater] = true;
 	}
+
 }
