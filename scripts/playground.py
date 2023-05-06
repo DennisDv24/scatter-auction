@@ -2,12 +2,10 @@ import brownie
 from brownie import (
     MinimalAuctionableNFT,
     ScatterAuction,
-    AuctionRewardToken
 )
 from brownie import accounts
 from web3 import Web3
 from random import randint
-from pymerkle import MerkleTree, verify_inclusion
 
 toWei = lambda x: Web3.toWei(x, 'ether')
 fst = lambda xs: xs[0]

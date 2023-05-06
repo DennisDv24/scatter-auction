@@ -2,7 +2,6 @@ import brownie
 from brownie import (
     MinimalAuctionableNFT,
     RewardedAuction,
-    AuctionRewardToken,
     TestToken,
     ScatterAuction,
     WeightedRewardedAuction,
@@ -41,33 +40,6 @@ def deploy_simple_auction(
     nft.setMinter(auction_house, {'from': accounts[0]})
 
     return nft, (), auction_house
-
-def deploy_rewarded_auction(
-    max_supply = 10000,
-    reserve_price = 0.1,
-    bid_increment = 0.05,
-    auction_duration = 60 * 60 * 3,
-    extra_bid_time = 60 * 5
-):
-    nft, _, auction = deploy_simple_auction(
-        max_supply, 
-        reserve_price,
-        bid_increment,
-        auction_duration,
-        extra_bid_time,
-        auction_contract = RewardedAuction
-    )
-
-    reward = AuctionRewardToken.deploy(
-        "RewardToken",
-        "RT",
-        {'from': accounts[0]}
-    )
-
-    auction.setRewardTokenAddress(reward.address, {'from': accounts[0]})
-    reward.setMinter(auction.address, {'from': accounts[0]})
-    
-    return nft, reward, auction
 
 def deploy_weighted_rewarded_auction(
     max_supply = 10000,

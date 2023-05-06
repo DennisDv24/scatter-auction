@@ -93,7 +93,7 @@ contract AuctionableArchetype is
 			payable(PLATFORM).transfer(platformFee);
 		}
 
-    if (config.ownerAltPayout != address(0)) {
+		if (config.ownerAltPayout != address(0)) {
 			payable(config.ownerAltPayout).transfer(address(this).balance);
 		} else {
 			payable(owner()).transfer(address(this).balance);

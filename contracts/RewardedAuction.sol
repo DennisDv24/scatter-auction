@@ -30,6 +30,10 @@ contract RewardedAuction is ScatterAuction, IHoldsShares {
 		_allowSharesUpdate[updater] = true;
 	}
 
+	function removeSharesUpdater(address updater) external onlyOwner {
+		_allowSharesUpdate[updater] = false;
+	}
+
 	function getIsSharesUpdater(address updater) external view returns (bool) {
 		return _allowSharesUpdate[updater];
 	}
